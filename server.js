@@ -161,7 +161,7 @@ io.on('connection', (socket) => {
                 if(player[id].score > 150){
                     player[id].score = 150;
                     gameOver = true;
-                    winnerId = socket.id;
+                    winnerId = id;
                     break;
                 }
 
