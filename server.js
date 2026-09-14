@@ -167,12 +167,12 @@ io.on('connection', (socket) => {
 });
 
 setInterval(() => {
-    if(!isgameOver){
+    if(!gameOver){
 
         for(let id in players){
             const player = players[id];
             checkFoodCollision(player);
-            checkPlayerCollision(socket.id, player);
+            checkPlayerCollision(id, player);
             checkBombCollision(player);
             
             if(players[id].score > 150){
