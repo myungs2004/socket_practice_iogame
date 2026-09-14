@@ -81,18 +81,21 @@ function checkPlayerCollision(attackerId, attacker) {
         const maxScore = Math.max(attacker.score, target.score);
 
         if (distance < maxScore) {
-            attacker.score += Math.floor(target.score / 2); // 상대 점수의 절반 흡수
+            if(attacker.score > target.score){
+                attacker.score += Math.floor(target.score / 2); // 상대 점수의 절반 흡수
             
-            target.x = Math.random() * 500 + 50;
-            target.y = Math.random() * 500 + 50;
-            target.score = 10;
-        }
-        else if (target.score > attacker.score) {
+                target.x = Math.random() * 500 + 50;
+                target.y = Math.random() * 500 + 50;
+                target.score = 10;
+
+            }else if (target.score > attacker.score) {
+                
                 target.score += Math.floor(attacker.score / 2);
                 attacker.x = Math.random() * 500 + 50;
                 attacker.y = Math.random() * 500 + 50;
                 attacker.score = 10;
         
+            }
         }
     }
 }
