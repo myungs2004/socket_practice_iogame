@@ -59,7 +59,7 @@ function checkFoodCollision(player) {
     foods.forEach((food) => {
         const dx = player.x - food.x;
         const dy = player.y - food.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        const distance = dx * dx + dy * dy;
 
         if (distance < player.score) {
             player.score += 1; 
@@ -76,7 +76,7 @@ function checkPlayerCollision(attackerId, attacker) {
         const target = players[targetId];
         const dx = attacker.x - target.x;
         const dy = attacker.y - target.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        const distance = dx * dx + dy * dy;
         
         const maxScore = Math.max(attacker.score, target.score);
 
@@ -104,9 +104,10 @@ function checkBombCollision(player) {
     bombs.forEach((bomb) => {
         const dx = player.x - bomb.x;
         const dy = player.y - bomb.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        const distance = dx * dx + dy * dy;
+        const radiusSum = player.score + bomb.radius;
 
-        if (distance < player.score + bomb.radius) {
+        if (distance < radiusSum*radiusSum) {
             const playerCount = Object.keys(players).length;
 
             if (playerCount <= 1) {
@@ -153,19 +154,6 @@ io.on('connection', (socket) => {
             player.x = Math.max(10, Math.min(590, player.x));
             player.y = Math.max(10, Math.min(590, player.y));
 
-            checkFoodCollision(player);
-            checkPlayerCollision(socket.id, player);
-            checkBombCollision(player);
-            
-            for(let id in players){
-                if(players[id].score > 150){
-                    players[id].score = 150;
-                    gameOver = true;
-                    winnerId = id;
-                    break;
-                }
-
-            }
         }
     });
 
@@ -179,8 +167,27 @@ io.on('connection', (socket) => {
 });
 
 setInterval(() => {
+    if(!isgameOver){
+
+        for(let id in players){
+            const player = players[id];
+            checkFoodCollision(player);
+            checkPlayerCollision(socket.id, player);
+            checkBombCollision(player);
+            
+            if(players[id].score > 150){
+                players[id].score = 150;
+                gameOver = true;
+                winnerId = id;
+                break;
+            }
+
+        }
+
+    }
+
     io.emit('state', { players, foods, bombs, gameOver, winnerId});
-}, 1000 / 30); 
+}, 1000 / 20); 
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

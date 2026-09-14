@@ -39,25 +39,31 @@
             if (e.key in keys) keys[e.key] = false;
         });
 
-        function sendInput() {
+        let lastSendTime =0;
+        const SEND_INTERVAL = 1000/20;
+
+        function sendInput(currentTime) {
             if(gameStarted){
-                let dx = 0, dy = 0;
-                const speed = 2; // 이동 속도
+                if(currentTime -lastSendTime >=SEND_INTERVAL){
+                    let dx = 0, dy = 0;
+                    const speed = 2; // 이동 속도
 
-                if (keys.ArrowUp) dy -= speed;
-                if (keys.ArrowDown) dy += speed;
-                if (keys.ArrowLeft) dx -= speed;
-                if (keys.ArrowRight) dx += speed;
+                    if (keys.ArrowUp) dy -= speed;
+                    if (keys.ArrowDown) dy += speed;
+                    if (keys.ArrowLeft) dx -= speed;
+                    if (keys.ArrowRight) dx += speed;
 
-                if (dx !== 0 || dy !== 0) {
-                    socket.emit('move', { dx, dy });
+                    if (dx !== 0 || dy !== 0) {
+                        socket.emit('move', { dx, dy });
+                    }
+                    lastSendTime = currentTime;
                 }
             }
 
             requestAnimationFrame(sendInput);
         }
 
-        sendInput();
+        requestAnimationFrame(sendInput);
 
         socket.on('state', (data) => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
