@@ -89,7 +89,7 @@ function checkPlayerCollision(attackerId, attacker) {
                 target.score = 10;
 
             }else if (target.score > attacker.score) {
-                
+
                 target.score += Math.floor(attacker.score / 2);
                 attacker.x = Math.random() * 500 + 50;
                 attacker.y = Math.random() * 500 + 50;
@@ -156,11 +156,15 @@ io.on('connection', (socket) => {
             checkFoodCollision(player);
             checkPlayerCollision(socket.id, player);
             checkBombCollision(player);
+            
+            for(let id in players){
+                if(player.score > 150){
+                    player.score = 150;
+                    gameOver = true;
+                    winnerId = socket.id;
+                    break;
+                }
 
-            if(player.score > 150){
-                player.score = 150;
-                gameOver = true;
-                winnerId = socket.id;
             }
         }
     });
