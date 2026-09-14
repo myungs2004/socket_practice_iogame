@@ -158,8 +158,8 @@ io.on('connection', (socket) => {
             checkBombCollision(player);
             
             for(let id in players){
-                if(player.score > 150){
-                    player.score = 150;
+                if(player[id].score > 150){
+                    player[id].score = 150;
                     gameOver = true;
                     winnerId = socket.id;
                     break;
