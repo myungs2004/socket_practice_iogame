@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>canvas { border: 1px solid black; background: #f0f0f0; }</style>
+</head>
+<body>
+    <canvas id="game" width="600" height="600"></canvas>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script>
+        const socket = io();
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+
+        let gameStarted = false;
+        let isGameOver = false;
+
+        const keys = {
+            ArrowUp: false,
+            ArrowDown: false,
+            ArrowLeft: false,
+            ArrowRight: false
+        };
+
+        window.addEventListener('keydown', (e) => {
+
+            if(isGameOver){
+                socket.emit('restart');
+                return;
+            }
+
+            if(!gameStarted){
+                gameStarted = true;
+            }
+
+            if (e.key in keys) keys[e.key] = true;
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key in keys) keys[e.key] = false;
+        });
+
+        function sendInput() {
+            if(gameStarted){
+                let dx = 0, dy = 0;
+                const speed = 2; // 이동 속도
+
+                if (keys.ArrowUp) dy -= speed;
+                if (keys.ArrowDown) dy += speed;
+                if (keys.ArrowLeft) dx -= speed;
+                if (keys.ArrowRight) dx += speed;
+
+                if (dx !== 0 || dy !== 0) {
+                    socket.emit('move', { dx, dy });
+                }
+            }
+
+            requestAnimationFrame(sendInput);
+        }
+
+        sendInput();
+
+        socket.on('state', (data) => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (!gameStarted) {
+                ctx.fillStyle = '#222222';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // 게임 제목
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 36px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('io survivor', canvas.width / 2, canvas.height / 2 - 40);
+
+                // 안내 문구
+                ctx.fillStyle = '#cccccc';
+                ctx.font = '18px Arial';
+                ctx.fillText('Press any key to start', canvas.width / 2, canvas.height / 2 + 40);
+                return;
+            }
+
+            const { players, foods ,bombs,gameOver,winnerId} = data;
+            isGameOver = gameOver;
+
+            //1.먹이
+            if (foods) {
+                foods.forEach((food) => {
+                    ctx.beginPath();
+                    ctx.arc(food.x, food.y, 4, 0, Math.PI * 2);
+                    ctx.fillStyle = food.color;
+                    ctx.fill();
+                });
+            }
+
+            //2.폭탄
+            if (bombs) {
+                bombs.forEach((bomb) => {
+                    ctx.beginPath();
+                    ctx.arc(bomb.x, bomb.y, bomb.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = '#333333';
+                    ctx.fill();
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = '#ff0000';
+                    ctx.stroke();
+                });
+            }
+
+            //3.플레이어
+            for (let id in players) {
+                const p = players[id];
+                const isMe = id === socket.id;
+
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.score, 0, Math.PI * 2); // p.score가 원의 반지름(크기) 역할
+                ctx.fillStyle = p.color || (id === socket.id ? 'blue' : 'red');
+                ctx.fill();
+
+                if (isMe) {
+                    ctx.lineWidth = 3;
+                    ctx.strokeStyle = '#FFD700';
+                    ctx.stroke();
+                } else {
+                    ctx.lineWidth = 1;
+                    ctx.strokeStyle = '#000000';
+                    ctx.stroke();
+                }
+
+                ctx.fillStyle = 'white';
+                ctx.font = '10px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(p.score, p.x, p.y);
+            }
+
+            //4.랭킹
+            if (players) {
+                
+                const sortedPlayers = Object.entries(players)
+                    .map(([id, p]) => ({ id, score: p.score, color: p.color, name: p.name}))
+                    .sort((a, b) => b.score - a.score);
+
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.fillRect(450, 10, 140, 25 + sortedPlayers.length * 18);
+
+                // 제목
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'left';
+                ctx.fillText('Ranking', 460, 25);
+
+                // 순위 목록 출력 (최대 Top 5)
+                sortedPlayers.slice(0, 5).forEach((p, index) => {
+                    const isMe = p.id === socket.id;
+                    ctx.fillStyle = p.color || (isMe ? '#00ffff' : '#ffffff');
+                    ctx.font = isMe ? 'bold 11px Arial' : '11px Arial';
+                    
+                    const label = isMe ? `${index + 1}. YOU` : `${index + 1}.${p.name}`;
+                    ctx.fillText(`${label}: ${p.score}`, 460, 45 + index * 18);
+                });
+            }
+
+            // 5. 게임 종료 오버레이 UI
+            if (gameOver) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                const isWinner = winnerId === socket.id;
+                const winnerName = (winnerId && players[winnerId]) ? players[winnerId].name : 'Winner';
+
+                ctx.fillStyle = '#FFD700';
+                ctx.font = 'bold 32px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(isWinner ? 'VICTORY!' : 'GAME OVER!', canvas.width / 2, 240);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '20px Arial';
+                const winnerLabel = isWinner ? 'You reached 150 points!' : `${winnerName} reached 150 points!`;
+                ctx.fillText(winnerLabel, canvas.width / 2, 290);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '20px Arial';
+                ctx.fillText('Press any key to restart', canvas.width / 2, 392);
+            }
+
+        });
+    </script>
+</body>
+</html>
